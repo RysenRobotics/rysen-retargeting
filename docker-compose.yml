@@ -1,0 +1,39 @@
+services:
+  rysen_retargeting:
+    image: ${RYSEN_RETARGETING_IMAGE:?set RYSEN_RETARGETING_IMAGE in .env}
+    pull_policy: missing
+    container_name: rysen_retargeting
+    network_mode: host
+    ipc: host
+    privileged: true
+    restart: unless-stopped
+    group_add:
+      - dialout
+      - video
+
+    environment:
+      ROS_DISTRO: humble
+      ROS_DOMAIN_ID: "${ROS_DOMAIN_ID:-111}"
+      ROS_LOCALHOST_ONLY: "${ROS_LOCALHOST_ONLY:-0}"
+      RMW_IMPLEMENTATION: "${RMW_IMPLEMENTATION:-rmw_fastrtps_cpp}"
+      MANUS_UDEV: "${MANUS_UDEV:-1}"
+      DISPLAY: "${DISPLAY:-:0}"
+      QT_X11_NO_MITSHM: "1"
+      MUJOCO_GL: glfw
+      ENABLE_VIEWER: "${ENABLE_VIEWER:-false}"
+      MANUS_CALIBRATION_FILE: "${MANUS_CALIBRATION_FILE:-}"
+      MANUS_CALIBRATION_GLOVE_ID: "${MANUS_CALIBRATION_GLOVE_ID:-}"
+      MANUS_RUNTIME_CALIBRATION_FILE: "${MANUS_RUNTIME_CALIBRATION_FILE:-}"
+
+    volumes:
+      - ./calibration:/data/calibration:rw
+      - /dev:/dev
+      - /run/udev:/run/udev:ro
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+
+    command:
+      - ros2
+      - launch
+      - apex_hand_teleop
+      - manus_apex_teleop.launch.py
+      - enable_viewer:=${ENABLE_VIEWER:-false}

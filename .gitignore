@@ -1,0 +1,4 @@
+# Per-machine deployment configuration and calibration data.
+.env
+calibration/*
+!calibration/.gitkeep
