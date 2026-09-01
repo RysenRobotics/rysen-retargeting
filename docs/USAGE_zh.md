@@ -4,6 +4,10 @@
 
 本文档介绍该仓库启动后的 ROS 2 服务、MANUS 姿态标定和常用检查方法。
 
+> 该仓库只发布关节命令，不会通过 SDK 连接或使能 ApexHand。即使没有任何 ROS 2 节点订阅关节命令话题，StartTeleop 也可能返回 success: true；这时灵巧手不会动作。实机需要由灵巧手的 ROS 后端接收并处理该话题，仿真也需要订阅同一话题。
+
+如果需要在电脑上部署 ApexHand SDK 和 ROS 后端，推荐使用 [Rysen Explorer](https://github.com/RysenRobotics/Rysen_Explorer)。先在其中连接灵巧手并执行 Power On/使能，再回到该仓库启动遥操作。两边的 ROS_DOMAIN_ID 需要一致。
+
 ## 进入 Docker
 
 下面的命令都可以直接在 Docker 中执行，不需要在宿主机安装 ROS 2 消息包。
@@ -206,6 +210,6 @@ ros2 topic echo \
 | 调用一直停在 waiting for service to become available | 管理服务可能没有启动，或调用端与 Docker 的 ROS_DOMAIN_ID 不同。可以先在 Docker 内调用一次，区分服务问题和跨主机发现问题。 |
 | 返回 no matching glove data | 检查 USB 接收器、手套连接状态，并确认服务代码与手套侧别一致：1 为左，2 为右。 |
 | 看不到 USB 接收器 | 在宿主机执行 lsusb 和 ls -l /dev/hidraw*，重新插拔接收器后再看 Docker 日志。 |
-| 服务成功但手不动 | 检查关节命令话题是否有数据，ApexHand 驱动是否订阅该话题，ROS_DOMAIN_ID 是否一致，手的 IP 是否可达，以及急停和使能状态。 |
+| 服务成功但手不动 | 没有灵巧手 ROS 后端或仿真订阅关节命令话题时，这是正常现象。请先通过 SDK 后端连接并使能灵巧手，推荐在电脑上部署 Rysen Explorer；然后再检查话题数据、驱动订阅、ROS_DOMAIN_ID、手的 IP、急停和使能状态。 |
 | 手的动作有停顿或延迟 | 用 ros2 topic hz 查看关节命令频率，并检查主机 CPU。关闭不必要的图形界面或高负载程序；笔记本建议接电源。 |
 | Docker 一直重启 | 执行 docker compose logs --tail=200 rysen_retargeting，检查镜像标签、.env 格式和 calibration 目录挂载。 |

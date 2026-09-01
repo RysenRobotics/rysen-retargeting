@@ -35,10 +35,12 @@
 | 系统 | 已在 Ubuntu 22.04 上验证。 |
 | Docker | 需要 Docker Engine 和 Docker Compose v2。 |
 | MANUS | 使用 MANUS 手套时，需要将 MANUS USB 接收器连接到运行 Docker 的主机。 |
-| 控制对象 | 需要接入 ApexHand 实机驱动，或接入订阅同一 ROS 话题的仿真。 |
+| 控制对象 | 需要接入 ApexHand 的 ROS 后端，或接入订阅同一 ROS 话题的仿真。 |
 | ROS 2 网络 | Docker、ApexHand 驱动和 ROS 2 调用端需要使用相同的 ROS_DOMAIN_ID。通常 ROS_LOCALHOST_ONLY 应为 0，RMW_IMPLEMENTATION 应为 rmw_fastrtps_cpp。 |
 
 > 没有接入实机灵巧手或仿真时，Docker 仍可启动，MANUS 数据和服务也可能正常，但没有控制对象接收关节命令。因此遥操作不会产生实际动作，标定也无法验证最终的手部效果。
+
+> **重要：** 该仓库只发布关节命令，不会通过 ApexHand SDK 连接灵巧手、使能灵巧手或直接发送电机控制命令。StartTeleop 调用成功只表示该仓库可以发布 ROS 2 命令话题，不表示一定有其他 ROS 2 节点在接收和处理该话题。
 
 左手的默认 IP 是 192.168.0.102，右手的默认 IP 是 192.168.0.103。实际使用时，IP 以部署的灵巧手或仿真配置为准。
 
@@ -87,6 +89,24 @@ MANUS teleop manager ready at /rysen/apexhand/start_manus_teleop
 ~~~
 
 此时 Docker 只启动了管理服务。手套数据发布和左右手的重定向进程会在调用启动服务后按需启动。
+
+## 连接并使能灵巧手
+
+想要让遥操作带动实机，ApexHand 的 ROS 后端需要先连接对应的灵巧手并使能。该后端需要订阅下面的话题：
+
+~~~text
+/rysen/apexhand/ip_<IP 中的点替换为下划线>/move_j_position_follow_command
+~~~
+
+例如，左手 IP 为 192.168.0.102 时，对应话题是：
+
+~~~text
+/rysen/apexhand/ip_192_168_0_102/move_j_position_follow_command
+~~~
+
+如果没有任何 ROS 2 后端或仿真订阅这个话题，StartTeleop 仍然可能返回 success: true，但灵巧手不会动作。这是正常现象，因为没有节点接收和处理关节命令。
+
+如果需要在电脑上部署 ApexHand SDK 和 ROS 后端，推荐使用 [Rysen Explorer](https://github.com/RysenRobotics/Rysen_Explorer)。完成部署后，可在它的前端界面中连接目标灵巧手 IP，并执行 Power On/使能。请确认它的 ROS_DOMAIN_ID 与该仓库一致。这样，该仓库发布的话题就会有节点处理，之后即可调用下面的服务启动遥操作。
 
 ## 使用服务
 

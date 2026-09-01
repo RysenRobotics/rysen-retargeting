@@ -39,13 +39,19 @@ library needs to be mounted or built on the host.
 | System | Tested on Ubuntu 22.04. |
 | Docker | Docker Engine and Docker Compose v2 are needed. |
 | MANUS | Connect the MANUS USB receiver to the host that runs Docker. |
-| Control target | Connect an ApexHand driver for a real hand, or a simulator that subscribes to the same ROS topic. |
+| Control target | Connect an ApexHand ROS backend for a real hand, or a simulator that subscribes to the same ROS topic. |
 | ROS 2 network | Docker, the ApexHand driver, and ROS 2 callers need the same ROS_DOMAIN_ID. Usually ROS_LOCALHOST_ONLY is 0 and RMW_IMPLEMENTATION is rmw_fastrtps_cpp. |
 
 > Without a real hand driver or a simulator, Docker can still start and MANUS
 > data and services can still work. However, no control target receives the
 > joint commands. Teleoperation will not move anything, and calibration cannot
 > be checked on a hand.
+
+> **Important:** This repository only publishes joint commands. It does not use
+> the ApexHand SDK to connect a hand, enable it, or send motor commands. A
+> successful StartTeleop call means that this repository can publish its ROS 2
+> command topic. It does not mean that another ROS 2 node is receiving or
+> processing that topic.
 
 The usual left-hand IP is 192.168.0.102. The usual right-hand IP is
 192.168.0.103. Use the IP address from your hand or simulator setup if it is
@@ -97,6 +103,32 @@ MANUS teleop manager ready at /rysen/apexhand/start_manus_teleop
 
 At this time Docker starts only the manager. The glove publisher and left/right
 retargeting processes start after a start service call.
+
+## Connect and enable the hand
+
+Before teleoperation can move a real hand, an ApexHand ROS backend needs to
+connect to that hand and enable it. That backend must subscribe to:
+
+~~~text
+/rysen/apexhand/ip_<IP with dots changed to underscores>/move_j_position_follow_command
+~~~
+
+For example, the left hand at 192.168.0.102 uses:
+
+~~~text
+/rysen/apexhand/ip_192_168_0_102/move_j_position_follow_command
+~~~
+
+If no ROS 2 backend or simulator subscribes to this topic, a StartTeleop
+request can still return success: true, but the hand will not move. This is
+normal: there is no node that receives and handles the command.
+
+For a PC deployment of the ApexHand SDK and ROS backend, we recommend
+[Rysen Explorer](https://github.com/RysenRobotics/Rysen_Explorer). After it is
+deployed, use its front end to connect the target hand IP and power on/enable
+the hand. Make sure its ROS_DOMAIN_ID matches this repository. After that, the
+topic published by this repository has a node that can process it, and
+teleoperation can be started from the command below.
 
 ## Use the service
 

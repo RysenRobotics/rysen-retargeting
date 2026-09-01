@@ -5,6 +5,17 @@
 This guide explains the ROS 2 services, MANUS pose calibration, and basic topic
 checks after Docker has started.
 
+> This repository only publishes joint commands. It does not connect or enable
+> an ApexHand through the SDK. StartTeleop can return success: true even when no
+> hand moves, because it does not check whether another ROS 2 node subscribes
+> to the command topic. A hand ROS backend or simulator must subscribe to the
+> topic and handle the command.
+
+For a PC setup with the ApexHand SDK and ROS backend, we recommend
+[Rysen Explorer](https://github.com/RysenRobotics/Rysen_Explorer). Connect the
+hand and power it on/enable it there before starting teleoperation here. Its
+ROS_DOMAIN_ID needs to match this repository.
+
 ## Enter Docker
 
 All commands in this guide can run inside Docker. The host does not need ROS 2
@@ -218,6 +229,6 @@ Useful MANUS topics are:
 | The call waits for the service | The manager may not be running, or the caller and Docker use different ROS_DOMAIN_ID values. Test the call inside Docker first. |
 | Start reports no matching glove data | Check the USB receiver, glove connection, and selected side: 1 is left and 2 is right. |
 | The USB receiver is not found | On the host, run lsusb and ls -l /dev/hidraw*. Reconnect the receiver and check Docker logs. |
-| The service succeeds but the hand does not move | Check the joint command topic, driver subscription, ROS_DOMAIN_ID, hand IP, e-stop, and enable state. |
+| The service succeeds but the hand does not move | This can be normal when no hand ROS backend or simulator subscribes to the joint command topic. Connect and enable the hand through its SDK backend first; Rysen Explorer is the recommended PC deployment. Then check the topic, driver subscription, ROS_DOMAIN_ID, hand IP, e-stop, and enable state. |
 | Motion pauses or feels slow | Check the command rate with ros2 topic hz and check host CPU use. Closing heavy programs and connecting laptop power may help. |
 | Docker restarts | Run docker compose logs --tail=200 rysen_retargeting and check the image tag, .env file, and calibration directory mount. |
