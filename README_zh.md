@@ -70,8 +70,6 @@ RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 | ROS_LOCALHOST_ONLY | 0 | Docker 与其他主机上的 ROS 2 节点需要通信时，应保持为 0。 |
 | RMW_IMPLEMENTATION | rmw_fastrtps_cpp | ROS 2 通信库，通常应与灵巧手驱动一致。 |
 | MANUS_RUNTIME_CALIBRATION_FILE | /data/calibration/manus_runtime_calibration.yaml | 保存 MANUS 姿态标定的文件，实际保存在本地 calibration 目录中。 |
-| ENABLE_VIEWER | false | 只有需要在本地打开 MuJoCo 窗口时才设为 true。 |
-| DISPLAY | :0 | ENABLE_VIEWER 为 true 时使用的 X11 显示器。 |
 | MANUS_UDEV | 1 | 让 Docker 尝试加载镜像内置的 MANUS USB 访问规则。 |
 
 ### 2. 拉取并启动 Docker

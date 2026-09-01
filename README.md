@@ -79,8 +79,6 @@ The table below explains the normal deployment fields in .env.
 | ROS_LOCALHOST_ONLY | 0 | Keep 0 when Docker and other ROS 2 nodes need to talk across hosts. |
 | RMW_IMPLEMENTATION | rmw_fastrtps_cpp | ROS 2 communication library. It should normally match the hand driver. |
 | MANUS_RUNTIME_CALIBRATION_FILE | /data/calibration/manus_runtime_calibration.yaml | File used to save MANUS pose calibration. It is stored in the local calibration directory. |
-| ENABLE_VIEWER | false | Set true only when a local MuJoCo window is needed. |
-| DISPLAY | :0 | X11 display used when ENABLE_VIEWER is true. |
 | MANUS_UDEV | 1 | Lets Docker try to load the bundled MANUS USB access rules. |
 
 ### 2. Pull and start Docker
