@@ -91,7 +91,7 @@ The table below explains the normal deployment fields in .env.
 
 ~~~bash
 docker compose pull
-docker compose up -d
+docker compose --env-file .env up -d
 docker compose logs -f rysen_retargeting
 ~~~
 

@@ -78,7 +78,7 @@ RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 
 ~~~bash
 docker compose pull
-docker compose up -d
+docker compose --env-file .env up -d
 docker compose logs -f rysen_retargeting
 ~~~
 
