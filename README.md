@@ -6,8 +6,8 @@ This repository supports retargeting from MANUS gloves to ApexHand hands. It
 currently supports:
 
 - MANUS gloves as the input device
-- Left and right ApexHand hands
-- ROS 2 services to start, stop, and check teleoperation
+- Left and right ApexHand hands as the output device
+- Start, stop, and check teleoperation through ROS 2 services
 - MANUS pose calibration
 
 This repository provides a Docker image and Docker Compose files. It does not
@@ -35,7 +35,7 @@ library needs to be mounted or built on the host.
 
 | Item | Notes |
 | --- | --- |
-| Host CPU | x86_64 / amd64 only. arm64/aarch64 is not supported by this image. |
+| Host CPU | x86_64/amd64 only. arm64/aarch64 is not supported by this image. |
 | System | Tested on Ubuntu 22.04. |
 | Docker | Docker Engine and Docker Compose v2 are needed. |
 | MANUS | Connect the MANUS USB receiver to the host that runs Docker. |
@@ -53,7 +53,7 @@ library needs to be mounted or built on the host.
 > command topic. It does not mean that another ROS 2 node is receiving or
 > processing that topic.
 
-The usual left-hand IP is 192.168.0.102. The usual right-hand IP is
+The default left-hand IP is 192.168.0.102. The default right-hand IP is
 192.168.0.103. Use the IP address from your hand or simulator setup if it is
 different.
 
@@ -67,7 +67,7 @@ cd rysen-retargeting
 cp .env.example .env
 ~~~
 
-Edit .env and at lease make sure ROS_DOMAIN_ID is the same as the ApexHand driver:
+Edit .env and make sure ROS_DOMAIN_ID is the same as the ApexHand driver:
 
 ~~~dotenv
 RYSEN_RETARGETING_IMAGE=ghcr.io/rysenrobotics/rysen-retargeting:0.1.0-amd64

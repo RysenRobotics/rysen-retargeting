@@ -5,7 +5,7 @@
 该仓库提供 MANUS 手套到 ApexHand 灵巧手的重定向功能。目前支持：
 
 - MANUS 手套作为输入设备
-- 左右 ApexHand 灵巧手
+- 左右 ApexHand 灵巧手作为输出设备
 - 通过 ROS 2 服务启动、停止和查看遥操作状态
 - MANUS 手套的运行时姿态标定
 
@@ -31,7 +31,7 @@
 
 | 项目 | 说明 |
 | --- | --- |
-| 主机架构 | 仅支持 x86_64 / amd64。当前镜像不支持 arm64/aarch64。 |
+| 主机架构 | 仅支持 x86_64/amd64。当前镜像不支持 arm64/aarch64。 |
 | 系统 | 已在 Ubuntu 22.04 上验证。 |
 | Docker | 需要 Docker Engine 和 Docker Compose v2。 |
 | MANUS | 使用 MANUS 手套时，需要将 MANUS USB 接收器连接到运行 Docker 的主机。 |
@@ -54,7 +54,7 @@ cd rysen-retargeting
 cp .env.example .env
 ~~~
 
-编辑 .env，至少确认 ROS_DOMAIN_ID 与 ApexHand 驱动一致：
+编辑 .env，确认 ROS_DOMAIN_ID 与 ApexHand 驱动一致：
 
 ~~~dotenv
 RYSEN_RETARGETING_IMAGE=ghcr.io/rysenrobotics/rysen-retargeting:0.1.0-amd64
