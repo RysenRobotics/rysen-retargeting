@@ -2,150 +2,100 @@
 
 [English](README.md) | [中文](README_zh.md)
 
-该仓库提供 MANUS 手套到 ApexHand 灵巧手的重定向功能。目前支持：
+该仓库将 MANUS 手套动作重定向为 ApexHand 的 ROS 2 关节命令。目前支持 MANUS 手套和
+ApexHand 灵巧手。
 
-- MANUS 手套作为输入设备
-- 左右 ApexHand 灵巧手作为输出设备
-- 通过 ROS 2 服务启动、停止和查看遥操作状态
-- MANUS 手套的运行时姿态标定
+仓库只提供部署文件。Docker 镜像内已经包含 MANUS SDK、新版重定向算法、标定工具和 ROS 2
+接口；镜像**不**包含 ApexHand SDK 的 ROS 后端。
 
-该仓库只提供 Docker 镜像和部署配置。Docker 镜像已经包含 MANUS SDK、ROS 2、IK 求解和所需的 ROS 2 消息接口，使用者不需要额外挂载或编译 MANUS 动态库。
-
-## 仓库结构
-
-~~~text
-.
-├── calibration/                        # 运行时标定文件目录，挂载进 Docker
-│   └── manus_runtime_calibration.yaml  # 保存的 MANUS 姿态标定（自动生成）
-├── docs/
-│   ├── USAGE.md                        # 使用说明（English）
-│   └── USAGE_zh.md                     # 使用说明（中文）
-├── docker-compose.yml                  # Docker Compose 部署配置
-├── .env.example                        # 环境变量配置模板
-├── LICENSE
-├── README.md                           # 英文 README
-└── README_zh.md                        # 本文件（中文）
-~~~
-
-## 前置需求
+## 前置条件
 
 | 项目 | 说明 |
 | --- | --- |
-| 主机架构 | 仅支持 x86_64/amd64。当前镜像不支持 arm64/aarch64。 |
-| 系统 | 已在 Ubuntu 22.04 上验证。 |
-| Docker | 需要 Docker Engine 和 Docker Compose v2。 |
-| MANUS | 使用 MANUS 手套时，需要将 MANUS USB 接收器连接到运行 Docker 的主机。 |
-| 控制对象 | 需要接入 ApexHand 的 ROS 后端，或接入订阅同一 ROS 话题的仿真。 |
-| ROS 2 网络 | Docker、ApexHand 驱动和 ROS 2 调用端需要使用相同的 ROS_DOMAIN_ID。通常 ROS_LOCALHOST_ONLY 应为 0，RMW_IMPLEMENTATION 应为 rmw_fastrtps_cpp。 |
+| CPU | x86_64 / amd64。 |
+| Docker | Docker Engine 和 Docker Compose v2。 |
+| MANUS | 将 USB 接收器连接到运行 Docker 的主机。 |
+| ApexHand 后端 | 实机或仿真都需要独立的 ROS 2 后端订阅命令话题。 |
+| ROS 2 配置 | manager、灵巧手后端和 ROS 调用端必须使用相同的 `ROS_DOMAIN_ID`。通常 `ROS_LOCALHOST_ONLY=0`，`RMW_IMPLEMENTATION=rmw_fastrtps_cpp`。 |
 
-> 没有接入实机灵巧手或仿真时，Docker 仍可启动，MANUS 数据和服务也可能正常，但没有控制对象接收关节命令。因此遥操作不会产生实际动作，标定也无法验证最终的手部效果。
+该容器只发布命令，不会连接灵巧手、使能手指，也不会调用 ApexHand SDK。如果没有外部 ROS 2
+节点订阅命令话题，遥操作服务仍可能返回成功，但不会有任何设备动作；这是正常的。
 
-> **重要：** 该仓库只发布关节命令，不会通过 ApexHand SDK 连接灵巧手、使能灵巧手或直接发送电机控制命令。StartTeleop 调用成功只表示该仓库可以发布 ROS 2 命令话题，不表示一定有其他 ROS 2 节点在接收和处理该话题。
-
-左手的默认 IP 是 192.168.0.102，右手的默认 IP 是 192.168.0.103。实际使用时，IP 以部署的灵巧手或仿真配置为准。
+如果需要在电脑上部署 ApexHand SDK ROS 后端，推荐使用
+[Rysen Explorer](https://github.com/RysenRobotics/Rysen_Explorer)。请先在其中连接并使能灵巧手，
+再回到本仓库启动遥操作。
 
 ## 快速开始
 
-### 1. 获取仓库并创建配置
-
-~~~bash
+```bash
 git clone https://github.com/RysenRobotics/rysen-retargeting.git
 cd rysen-retargeting
 cp .env.example .env
-~~~
+mkdir -p calibration manus_config logs
+```
 
-编辑 .env，确认 ROS_DOMAIN_ID 与 ApexHand 驱动一致：
+编辑 `.env`。最重要的是 `ROS_DOMAIN_ID`，它必须与独立部署的 ApexHand 后端一致。例如：
 
-~~~dotenv
-RYSEN_RETARGETING_IMAGE=ghcr.io/rysenrobotics/rysen-retargeting:0.1.0-amd64
+```dotenv
+RYSEN_RETARGETING_IMAGE=ghcr.io/rysenrobotics/rysen-retargeting:0.2.0-amd64
 ROS_DOMAIN_ID=111
 ROS_LOCALHOST_ONLY=0
 RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-~~~
+```
 
-下面是 .env 中日常部署会用到的字段说明。
+启动 manager：
 
-| 字段名 | 默认值 | 说明 |
-| --- | --- | --- |
-| RYSEN_RETARGETING_IMAGE | ghcr.io/rysenrobotics/rysen-retargeting:0.1.0-amd64 | 使用的 Docker 镜像和版本。 |
-| ROS_DOMAIN_ID | 111 | 需要与 ApexHand 驱动和 ROS 2 调用端保持一致。 |
-| ROS_LOCALHOST_ONLY | 0 | Docker 与其他主机上的 ROS 2 节点需要通信时，应保持为 0。 |
-| RMW_IMPLEMENTATION | rmw_fastrtps_cpp | ROS 2 通信库，通常应与灵巧手驱动一致。 |
-| MANUS_RUNTIME_CALIBRATION_FILE | /data/calibration/manus_runtime_calibration.yaml | 保存 MANUS 姿态标定的文件，实际保存在本地 calibration 目录中。 |
-| MANUS_UDEV | 1 | 让 Docker 尝试加载镜像内置的 MANUS USB 访问规则。 |
-
-### 2. 拉取并启动 Docker
-
-~~~bash
-docker compose pull
-docker compose --env-file .env up -d
-docker compose logs -f rysen_retargeting
-~~~
-
-日志出现下面的内容，表示管理服务已经准备好：
-
-~~~text
-MANUS teleop manager ready at /rysen/apexhand/start_manus_teleop
-~~~
-
-此时 Docker 只启动了管理服务。手套数据发布和左右手的重定向进程会在调用启动服务后按需启动。
-
-## 连接并使能灵巧手
-
-想要让遥操作带动实机，ApexHand 的 ROS 后端需要先连接对应的灵巧手并使能。该后端需要订阅下面的话题：
-
-~~~text
-/rysen/apexhand/ip_<IP 中的点替换为下划线>/move_j_position_follow_command
-~~~
-
-例如，左手 IP 为 192.168.0.102 时，对应话题是：
-
-~~~text
-/rysen/apexhand/ip_192_168_0_102/move_j_position_follow_command
-~~~
-
-如果没有任何 ROS 2 后端或仿真订阅这个话题，StartTeleop 仍然可能返回 success: true，但灵巧手不会动作。这是正常现象，因为没有节点接收和处理关节命令。
-
-如果需要在电脑上部署 ApexHand SDK 和 ROS 后端，推荐使用 [Rysen Explorer](https://github.com/RysenRobotics/Rysen_Explorer)。完成部署后，可在它的前端界面中连接目标灵巧手 IP，并执行 Power On/使能。请确认它的 ROS_DOMAIN_ID 与该仓库一致。这样，该仓库发布的话题就会有节点处理，之后即可调用下面的服务启动遥操作。
-
-## 使用服务
-
-完整的服务调用、姿态标定、话题检查和常见问题见：
-
-[使用说明](docs/USAGE_zh.md) | [Usage guide (English)](docs/USAGE.md)
-
-最简启动示例：进入 Docker 后调用左手服务。
-
-~~~bash
-docker compose exec -it rysen_retargeting bash
-
-source /opt/ros/humble/setup.bash
-source /opt/rysen-retargeting/install/setup.bash
-
-ros2 service call /rysen/apexhand/start_manus_teleop \
-  rysen_apexhand_msgs/srv/StartTeleop \
-  "{command: '1:192.168.0.102'}"
-~~~
-
-## 常用 Docker 命令
-
-~~~bash
-# 查看日志
-docker compose logs -f rysen_retargeting
-
-# 停止 Docker。calibration/ 下的文件会保留。
-docker compose down
-
-# 再次启动
+```bash
 docker compose up -d
+docker compose logs -f rysen_retargeting
+```
 
-# 手动拉取当前标签的最新镜像，并重建 Docker
-docker compose pull
-docker compose up -d --force-recreate
-~~~
+`docker-compose.yml` 使用 `pull_policy: missing`：本地没有该标签时会自动拉取；本地已有同一
+标签时不会重复拉取。如发布者更新了同名标签，请先执行 `docker compose pull`，再执行
+`docker compose up -d`。
 
-docker-compose.yml 中的 pull_policy: missing 表示 Docker 本地已有同一镜像标签时，docker compose up -d 不会再次拉取。镜像发布者更新了同名标签后，可手动执行 docker compose pull。
+日志出现 `新版 MANUS manager 就绪` 时，服务已经可用。此时它不会读取手套、运行 IK、打开
+Viewer，也不会发布灵巧手命令；这些进程会在调用服务后按需启动。
+
+## 配置项
+
+| 字段 | 默认值 | 说明 |
+| --- | --- | --- |
+| `RYSEN_RETARGETING_IMAGE` | `ghcr.io/rysenrobotics/rysen-retargeting:0.2.0-amd64` | Docker 镜像和版本。 |
+| `RYSEN_UID` / `RYSEN_GID` | `1000` / `1000` | 一般无需设置；若 `id -u` / `id -g` 不是 `1000`，再将这两个可选字段设为对应数值。 |
+| `ROS_DOMAIN_ID` | `111` | 必须与 ApexHand ROS 后端及调用端一致。 |
+| `ROS_LOCALHOST_ONLY` | `0` | ROS 节点需要跨容器/主机通信时保持 `0`。 |
+| `RMW_IMPLEMENTATION` | `rmw_fastrtps_cpp` | ROS 通信中间件，通常与灵巧手后端一致。 |
+| `DISPLAY` | 空 | 只在图形标定时需要。 |
+| `MUJOCO_GL` | `glfw` | 标定时 MuJoCo 使用的图形后端。 |
+
+compose 会在本地生成并忽略下面的目录：
+
+- `calibration/`：`*.json` 标定文件与 `active_profiles.json`。
+- `manus_config/`：MANUS Core 运行时生成的本地配置。
+- `logs/`：manager 和子进程日志。
+
+容器使用 `privileged: true`、`/dev:/dev` 和只读 `/run/udev`。这是经真实 MANUS 接收器验证的
+USB 配置；不要只挂载 `/dev/bus/usb`。
+
+图形标定时，在桌面终端执行 `echo "$DISPLAY"`，将输出写入 `.env` 的 `DISPLAY`（例如
+`DISPLAY=:1`）。manager 以同一桌面用户运行，因此正常重启/重新登录后不需要执行 `xhost`。修改
+`.env` 后，只需执行一次 `docker compose up -d --force-recreate` 重建容器。
+
+服务调用、标定、话题检查和常见问题见
+[中文使用说明](docs/USAGE_zh.md) | [Usage guide](docs/USAGE.md)。
+
+## 命令控制对象
+
+当灵巧手 IP 为 `192.168.0.103` 时，该容器发布：
+
+```text
+/rysen/apexhand/ip_192_168_0_103/move_j_control_follow_command
+```
+
+外部 ApexHand SDK ROS 后端必须订阅该话题，并且已连接、使能这只手。新版不使用旧的
+`move_j_position_follow_command` 话题。
 
 ## 许可证
 
-见 [LICENSE](LICENSE)。MANUS 及其他第三方组件仍受其各自许可证约束。
+见 [LICENSE](LICENSE)。MANUS 和其他第三方软件仍受各自许可证约束。
