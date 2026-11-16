@@ -1,4 +1,6 @@
-# Per-machine deployment configuration and calibration data.
+# Per-machine deployment configuration and generated runtime data.
 .env
 calibration/*
 !calibration/.gitkeep
+manus_config/
+logs/

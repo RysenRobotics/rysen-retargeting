@@ -2,176 +2,139 @@
 
 [English](README.md) | [中文](README_zh.md)
 
-This repository supports retargeting from MANUS gloves to ApexHand hands. It
-currently supports:
+Rysen Retargeting turns MANUS glove motion into ApexHand ROS 2 joint commands.
+This release currently supports MANUS gloves and ApexHand hands.
 
-- MANUS gloves as the input device
-- Left and right ApexHand hands as the output device
-- Start, stop, and check teleoperation through ROS 2 services
-- MANUS pose calibration
+The repository contains only deployment files. The Docker image contains the
+MANUS SDK, the new retargeting algorithm, calibration tools, and ROS 2
+packages. It does **not** contain the ApexHand SDK ROS backend.
 
-This repository provides a Docker image and Docker Compose files. It does not
-include the retargeting source code. The Docker image already contains the
-MANUS SDK, ROS 2, IK tools, and the ROS 2 message packages. No extra MANUS
-library needs to be mounted or built on the host.
-
-## Repository Structure
-
-~~~text
-.
-├── calibration/                        # Runtime calibration files, mounted into Docker
-│   └── manus_runtime_calibration.yaml  # Saved MANUS pose calibration (generated)
-├── docs/
-│   ├── USAGE.md                        # Usage guide (English)
-│   └── USAGE_zh.md                     # Usage guide (中文)
-├── docker-compose.yml                  # Docker Compose deployment file
-├── .env.example                        # Environment config template
-├── LICENSE
-├── README.md                           # This file (English)
-└── README_zh.md                        # README (中文)
-~~~
-
-## Prerequisites
+## What is needed
 
 | Item | Notes |
 | --- | --- |
-| Host CPU | x86_64/amd64 only. arm64/aarch64 is not supported by this image. |
-| System | Tested on Ubuntu 22.04. |
-| Docker | Docker Engine and Docker Compose v2 are needed. |
-| MANUS | Connect the MANUS USB receiver to the host that runs Docker. |
-| Control target | Connect an ApexHand ROS backend for a real hand, or a simulator that subscribes to the same ROS topic. |
-| ROS 2 network | Docker, the ApexHand driver, and ROS 2 callers need the same ROS_DOMAIN_ID. Usually ROS_LOCALHOST_ONLY is 0 and RMW_IMPLEMENTATION is rmw_fastrtps_cpp. |
+| CPU | x86_64 / amd64. |
+| Docker | Docker Engine and Docker Compose v2. |
+| MANUS | Connect the USB receiver to the Docker host. |
+| ApexHand backend | A real hand or simulator needs a separate ROS 2 backend that subscribes to the command topic. |
+| ROS 2 settings | The manager, hand backend, and ROS callers must use the same `ROS_DOMAIN_ID`. Usually `ROS_LOCALHOST_ONLY=0` and `RMW_IMPLEMENTATION=rmw_fastrtps_cpp`. |
 
-> Without a real hand driver or a simulator, Docker can still start and MANUS
-> data and services can still work. However, no control target receives the
-> joint commands. Teleoperation will not move anything, and calibration cannot
-> be checked on a hand.
+This container only publishes commands. It does not connect a hand, enable its
+fingers, or call the ApexHand SDK. If no external ROS 2 node subscribes to its
+command topic, a teleoperation request can succeed but nothing will move. This
+is expected.
 
-> **Important:** This repository only publishes joint commands. It does not use
-> the ApexHand SDK to connect a hand, enable it, or send motor commands. A
-> successful StartTeleop call means that this repository can publish its ROS 2
-> command topic. It does not mean that another ROS 2 node is receiving or
-> processing that topic.
+For a PC deployment of the ApexHand SDK ROS backend, we recommend
+[Rysen Explorer](https://github.com/RysenRobotics/Rysen_Explorer). Use it to
+connect the hand and enable it before starting teleoperation here.
 
-The default left-hand IP is 192.168.0.102. The default right-hand IP is
-192.168.0.103. Use the IP address from your hand or simulator setup if it is
-different.
+## Quick start
 
-## Quick Start
-
-### 1. Get the repository and create a config file
-
-~~~bash
+```bash
 git clone https://github.com/RysenRobotics/rysen-retargeting.git
 cd rysen-retargeting
 cp .env.example .env
-~~~
+mkdir -p calibration manus_config logs
+```
 
-Edit .env and make sure ROS_DOMAIN_ID is the same as the ApexHand driver:
+Edit `.env`. The important field is `ROS_DOMAIN_ID`: it must match the
+separately deployed ApexHand backend. For example:
 
-~~~dotenv
-RYSEN_RETARGETING_IMAGE=ghcr.io/rysenrobotics/rysen-retargeting:0.1.0-amd64
+```dotenv
+RYSEN_RETARGETING_IMAGE=ghcr.io/rysenrobotics/rysen-retargeting:0.2.1-amd64
 ROS_DOMAIN_ID=111
 ROS_LOCALHOST_ONLY=0
 RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-~~~
+```
 
-The table below explains the normal deployment fields in .env.
+Start the manager:
 
-| Field | Default value | Meaning |
-| --- | --- | --- |
-| RYSEN_RETARGETING_IMAGE | ghcr.io/rysenrobotics/rysen-retargeting:0.1.0-amd64 | Docker image and version to use. |
-| ROS_DOMAIN_ID | 111 | Must match the ApexHand driver and ROS 2 callers. |
-| ROS_LOCALHOST_ONLY | 0 | Keep 0 when Docker and other ROS 2 nodes need to talk across hosts. |
-| RMW_IMPLEMENTATION | rmw_fastrtps_cpp | ROS 2 communication library. It should normally match the hand driver. |
-| MANUS_RUNTIME_CALIBRATION_FILE | /data/calibration/manus_runtime_calibration.yaml | File used to save MANUS pose calibration. It is stored in the local calibration directory. |
-| MANUS_UDEV | 1 | Lets Docker try to load the bundled MANUS USB access rules. |
-
-### 2. Pull and start Docker
-
-~~~bash
-docker compose pull
-docker compose --env-file .env up -d
-docker compose logs -f rysen_retargeting
-~~~
-
-The manager is ready when the log contains:
-
-~~~text
-MANUS teleop manager ready at /rysen/apexhand/start_manus_teleop
-~~~
-
-At this time Docker starts only the manager. The glove publisher and left/right
-retargeting processes start after a start service call.
-
-## Connect and enable the hand
-
-Before teleoperation can move a real hand, an ApexHand ROS backend needs to
-connect to that hand and enable it. That backend must subscribe to:
-
-~~~text
-/rysen/apexhand/ip_<IP with dots changed to underscores>/move_j_position_follow_command
-~~~
-
-For example, the left hand at 192.168.0.102 uses:
-
-~~~text
-/rysen/apexhand/ip_192_168_0_102/move_j_position_follow_command
-~~~
-
-If no ROS 2 backend or simulator subscribes to this topic, a StartTeleop
-request can still return success: true, but the hand will not move. This is
-normal: there is no node that receives and handles the command.
-
-For a PC deployment of the ApexHand SDK and ROS backend, we recommend
-[Rysen Explorer](https://github.com/RysenRobotics/Rysen_Explorer). After it is
-deployed, use its front end to connect the target hand IP and power on/enable
-the hand. Make sure its ROS_DOMAIN_ID matches this repository. After that, the
-topic published by this repository has a node that can process it, and
-teleoperation can be started from the command below.
-
-## Use the service
-
-The full guide for service calls, pose calibration, topics, and common problems
-is here:
-
-[Usage guide](docs/USAGE.md) | [中文使用说明](docs/USAGE_zh.md)
-
-The shortest left-hand example is:
-
-~~~bash
-docker compose exec -it rysen_retargeting bash
-
-source /opt/ros/humble/setup.bash
-source /opt/rysen-retargeting/install/setup.bash
-
-ros2 service call /rysen/apexhand/start_manus_teleop \
-  rysen_apexhand_msgs/srv/StartTeleop \
-  "{command: '1:192.168.0.102'}"
-~~~
-
-## Common Docker commands
-
-~~~bash
-# Show logs
-docker compose logs -f rysen_retargeting
-
-# Stop Docker. Files under calibration/ stay on the host.
-docker compose down
-
-# Start Docker again
+```bash
 docker compose up -d
+docker compose logs -f rysen_retargeting
+```
 
-# Pull the image again and recreate Docker
+The image is pulled automatically only when this tag is absent locally because
+the compose file uses `pull_policy: missing`. To update an existing tag, run
+`docker compose pull` before `docker compose up -d`.
+
+The manager is ready when its log says `新版 MANUS manager 就绪`. At this point
+it exposes ROS services but it does not yet read the glove, run IK, open a
+viewer, or publish hand commands.
+
+## Upgrade an existing deployment（Not a first-time deployment）
+
+Keep the local `calibration/`, `manus_config/`, and `logs/` directories: they
+contain calibration profiles, MANUS local settings, and logs. Do not replace
+the local `.env` with `.env.example`; `.env` is machine-specific and is not
+changed by `git pull`.
+
+```bash
+cd rysen-retargeting
+git pull
+
+# Edit .env and set RYSEN_RETARGETING_IMAGE to the target release tag.
 docker compose pull
 docker compose up -d --force-recreate
-~~~
+docker compose logs -f rysen_retargeting
+```
 
-pull_policy: missing in docker-compose.yml means docker compose up -d uses a
-local image when the requested tag already exists. If a publisher updates the
-same image tag, docker compose pull can fetch the new image.
+`docker compose up -d --force-recreate` stops and replaces the old manager;
+there is no need to run `docker stop` or `docker rm` manually.
+
+Older releases may have created the persistent directories as `root`. If the
+new manager restarts or reports that it cannot write a log, calibration, or
+MANUS configuration directory, migrate their ownership once and start again:
+
+```bash
+sudo chown -R "$(id -u):$(id -g)" calibration manus_config logs
+docker compose up -d --force-recreate
+```
+
+## Configuration
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `RYSEN_RETARGETING_IMAGE` | `ghcr.io/rysenrobotics/rysen-retargeting:0.2.1-amd64` | Image and release version. |
+| `RYSEN_UID` / `RYSEN_GID` | `1000` / `1000` | Usually no change is needed. On a host where `id -u` / `id -g` are not `1000`, set these two optional fields to those values. |
+| `ROS_DOMAIN_ID` | `111` | Must match the ApexHand ROS backend and callers. |
+| `ROS_LOCALHOST_ONLY` | `0` | Keep `0` when ROS nodes need to communicate outside one container. |
+| `RMW_IMPLEMENTATION` | `rmw_fastrtps_cpp` | ROS middleware; normally match the hand backend. |
+| `DISPLAY` | empty | Needed only for graphical calibration. |
+| `MUJOCO_GL` | `glfw` | MuJoCo graphics backend used by calibration. |
+
+The compose file stores generated data in local ignored directories:
+
+- `calibration/`: `*.json` calibration files and `active_profiles.json`.
+- `manus_config/`: MANUS Core local settings created at runtime.
+- `logs/`: manager and child-process logs.
+
+The container runs with `privileged: true`, `/dev:/dev`, and a read-only
+`/run/udev` mount. This is intentional: it is the USB setup verified with a
+real MANUS receiver. Do not replace it with only `/dev/bus/usb`.
+
+For graphical calibration, set `DISPLAY` in `.env` to the value printed by
+`echo "$DISPLAY"` in the desktop terminal (for example `DISPLAY=:1`). The
+manager runs as the same desktop user, so normal reboot/login does not require
+an `xhost` command. After changing `.env`, recreate the manager once with
+`docker compose up -d --force-recreate`.
+
+The full service, calibration, topic, and troubleshooting guide is in
+[docs/USAGE.md](docs/USAGE.md) | [中文说明](docs/USAGE_zh.md).
+
+## Command target
+
+For an ApexHand at `192.168.0.103`, this container publishes:
+
+```text
+/rysen/apexhand/ip_192_168_0_103/move_j_control_follow_command
+```
+
+The external ApexHand SDK ROS backend must subscribe to this topic and must
+already have connected and enabled that hand. The old
+`move_j_position_follow_command` topic is not used by this release.
 
 ## License
 
-See [LICENSE](LICENSE). MANUS and other third-party components remain subject
-to their respective licenses.
+See [LICENSE](LICENSE). MANUS and other third-party software remain subject to
+their own licenses.
