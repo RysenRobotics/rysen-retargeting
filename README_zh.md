@@ -37,7 +37,7 @@ mkdir -p calibration manus_config logs
 编辑 `.env`。最重要的是 `ROS_DOMAIN_ID`，它必须与独立部署的 ApexHand 后端一致。例如：
 
 ```dotenv
-RYSEN_RETARGETING_IMAGE=ghcr.io/rysenrobotics/rysen-retargeting:0.2.0-amd64
+RYSEN_RETARGETING_IMAGE=ghcr.io/rysenrobotics/rysen-retargeting:0.2.1-amd64
 ROS_DOMAIN_ID=111
 ROS_LOCALHOST_ONLY=0
 RMW_IMPLEMENTATION=rmw_fastrtps_cpp
@@ -61,7 +61,7 @@ Viewer，也不会发布灵巧手命令；这些进程会在调用服务后按�
 
 | 字段 | 默认值 | 说明 |
 | --- | --- | --- |
-| `RYSEN_RETARGETING_IMAGE` | `ghcr.io/rysenrobotics/rysen-retargeting:0.2.0-amd64` | Docker 镜像和版本。 |
+| `RYSEN_RETARGETING_IMAGE` | `ghcr.io/rysenrobotics/rysen-retargeting:0.2.1-amd64` | Docker 镜像和版本。 |
 | `RYSEN_UID` / `RYSEN_GID` | `1000` / `1000` | 一般无需设置；若 `id -u` / `id -g` 不是 `1000`，再将这两个可选字段设为对应数值。 |
 | `ROS_DOMAIN_ID` | `111` | 必须与 ApexHand ROS 后端及调用端一致。 |
 | `ROS_LOCALHOST_ONLY` | `0` | ROS 节点需要跨容器/主机通信时保持 `0`。 |

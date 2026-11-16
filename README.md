@@ -41,7 +41,7 @@ Edit `.env`. The important field is `ROS_DOMAIN_ID`: it must match the
 separately deployed ApexHand backend. For example:
 
 ```dotenv
-RYSEN_RETARGETING_IMAGE=ghcr.io/rysenrobotics/rysen-retargeting:0.2.0-amd64
+RYSEN_RETARGETING_IMAGE=ghcr.io/rysenrobotics/rysen-retargeting:0.2.1-amd64
 ROS_DOMAIN_ID=111
 ROS_LOCALHOST_ONLY=0
 RMW_IMPLEMENTATION=rmw_fastrtps_cpp
@@ -66,7 +66,7 @@ viewer, or publish hand commands.
 
 | Field | Default | Meaning |
 | --- | --- | --- |
-| `RYSEN_RETARGETING_IMAGE` | `ghcr.io/rysenrobotics/rysen-retargeting:0.2.0-amd64` | Image and release version. |
+| `RYSEN_RETARGETING_IMAGE` | `ghcr.io/rysenrobotics/rysen-retargeting:0.2.1-amd64` | Image and release version. |
 | `RYSEN_UID` / `RYSEN_GID` | `1000` / `1000` | Usually no change is needed. On a host where `id -u` / `id -g` are not `1000`, set these two optional fields to those values. |
 | `ROS_DOMAIN_ID` | `111` | Must match the ApexHand ROS backend and callers. |
 | `ROS_LOCALHOST_ONLY` | `0` | Keep `0` when ROS nodes need to communicate outside one container. |
