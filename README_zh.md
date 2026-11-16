@@ -57,6 +57,33 @@ docker compose logs -f rysen_retargeting
 日志出现 `新版 MANUS manager 就绪` 时，服务已经可用。此时它不会读取手套、运行 IK、打开
 Viewer，也不会发布灵巧手命令；这些进程会在调用服务后按需启动。
 
+## 升级已有部署
+
+请保留本地的 `calibration/`、`manus_config/` 和 `logs/` 目录；其中分别保存标定 profile、MANUS
+本地配置和日志。不要用 `.env.example` 覆盖本机 `.env`：`.env` 是机器相关的配置，`git pull` 不会
+更新它。
+
+```bash
+cd rysen-retargeting
+git pull
+
+# 编辑 .env，将 RYSEN_RETARGETING_IMAGE 改为目标版本标签。
+docker compose pull
+docker compose up -d --force-recreate
+docker compose logs -f rysen_retargeting
+```
+
+`docker compose up -d --force-recreate` 会停止并替换旧 manager，不需要手工执行 `docker stop` 或
+`docker rm`。
+
+较早版本可能以 `root` 创建了持久化目录。若新版 manager 循环重启，或日志提示无法写入日志、标定、
+MANUS 配置目录，请一次性迁移目录所有权后重新启动：
+
+```bash
+sudo chown -R "$(id -u):$(id -g)" calibration manus_config logs
+docker compose up -d --force-recreate
+```
+
 ## 配置项
 
 | 字段 | 默认值 | 说明 |

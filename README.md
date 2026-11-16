@@ -62,6 +62,35 @@ The manager is ready when its log says `新版 MANUS manager 就绪`. At this po
 it exposes ROS services but it does not yet read the glove, run IK, open a
 viewer, or publish hand commands.
 
+## Upgrade an existing deployment（Not a first-time deployment）
+
+Keep the local `calibration/`, `manus_config/`, and `logs/` directories: they
+contain calibration profiles, MANUS local settings, and logs. Do not replace
+the local `.env` with `.env.example`; `.env` is machine-specific and is not
+changed by `git pull`.
+
+```bash
+cd rysen-retargeting
+git pull
+
+# Edit .env and set RYSEN_RETARGETING_IMAGE to the target release tag.
+docker compose pull
+docker compose up -d --force-recreate
+docker compose logs -f rysen_retargeting
+```
+
+`docker compose up -d --force-recreate` stops and replaces the old manager;
+there is no need to run `docker stop` or `docker rm` manually.
+
+Older releases may have created the persistent directories as `root`. If the
+new manager restarts or reports that it cannot write a log, calibration, or
+MANUS configuration directory, migrate their ownership once and start again:
+
+```bash
+sudo chown -R "$(id -u):$(id -g)" calibration manus_config logs
+docker compose up -d --force-recreate
+```
+
 ## Configuration
 
 | Field | Default | Meaning |
